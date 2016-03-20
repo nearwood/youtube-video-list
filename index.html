@@ -1,0 +1,256 @@
+<html>
+<head>
+<title>Video List</title>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
+<link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/themes/smoothness/jquery-ui.css">
+<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/jquery-ui.min.js"></script>
+<style>
+div#controls {
+	margin: 4px;
+}
+div#userDetails {
+	height: 128px;
+	margin: 4px;
+}
+input[type=text] {
+	font-family: monospace;
+}
+input#apikey, input#channel {
+	width: 25em;
+}
+div.channel {
+	border: 1px solid;
+	width: 96px;
+	padding: 2px;
+}
+div.channel > img {
+	
+}
+table {
+	width: 100%;
+	border: 1px solid black;
+	border-collapse: collapse;
+}
+table td, table th {
+	border: 1px solid black;
+	padding: 2px;
+}
+</style>
+<script type="text/javascript">
+"use strict";
+$(function() {
+	var $table = null;
+	var apikey = null;
+	var channelId = null;
+	var playlistId = null;
+	var videoCount = 0;
+	var videoDetailCount = 0;
+
+	$('body').on('click', 'div.channel', function(e) {
+		$('input#channel').val(this.id);
+	});
+
+	$('#getUser').click(function() {
+		var user = $('#user').val();
+		apikey = $('#apikey').val();
+
+		$.ajax("https://www.googleapis.com/youtube/v3/channels", {
+            dataType: 'json',
+            crossDomain: true,
+            success: parseUser,
+            data: {
+                part: 'snippet',
+				forUsername: user,
+				maxResults: 50,
+                key: apikey
+            }
+		});
+	});
+
+	function parseUser(data)
+	{
+		var $userDetails = $('#userDetails');
+		for (let i of data.items) {
+			$userDetails.append('<div class="channel" id="' + i.id + '">' + i.snippet.title + 
+			'<img src="' + i.snippet.thumbnails.default.url + '"/></div>');
+		}
+	}
+
+	$('#getVideos').click(function() {
+		apikey = $('#apikey').val();
+		playlistId = $('#playlist').val();
+		
+		$table = $('#results');
+		getMoreVideos(null, true);
+	});
+
+	$('#getPlaylists').click(function() {
+		apikey = $('#apikey').val();
+		channelId = $('#channel').val();
+
+		$.ajax("https://www.googleapis.com/youtube/v3/channels", {
+            dataType: 'json',
+            crossDomain: true,
+            success: parsePlaylists,
+            data: {
+                part: 'contentDetails',
+                id: channelId,
+                maxResults: 50,
+                key: apikey
+            }
+        });
+	});
+
+	function parsePlaylists(data)
+	{
+		channelId = data.contentDetails.relatedPlaylists.uploads;
+	}
+
+	$('#getAllVideoDetails').click(function() {
+		apikey = $('#apikey').val();
+		$table = $('#results');
+
+		$table.find('tr').each(function(i) {
+			$(this).find('button').click();
+		});
+	});
+
+	$('body').on('click', 'button#get', function(e) {
+		var tr = $(e.target).parents('tr');
+		getVideoDetails(tr);
+	});
+
+	function parseTime(duration)
+	{//borrowed from https://gist.github.com/jrtaylor-com/42883b0e28a45b8362e7
+		var hours   = 0;
+		var minutes = 0;
+		var seconds = 0;
+		var hours_split, minutes_split, seconds_split;
+
+		// Remove PT from string ref: https://developers.google.com/youtube/v3/docs/videos#contentDetails.duration
+		duration = duration.replace('PT','');
+
+		// If the string contains hours parse it and remove it from our duration string
+		if (duration.indexOf('H') > -1) {
+			hours_split = duration.split('H');
+			hours       = parseInt(hours_split[0]);
+			duration    = hours_split[1];
+		}
+
+		// If the string contains minutes parse it and remove it from our duration string
+		if (duration.indexOf('M') > -1) {
+			minutes_split = duration.split('M');
+			minutes       = parseInt(minutes_split[0]);
+			duration      = minutes_split[1];
+		}
+
+		// If the string contains seconds parse it and remove it from our duration string
+		if (duration.indexOf('S') > -1) {
+			seconds_split = duration.split('S');
+			seconds       = parseInt(seconds_split[0]);
+		}
+
+		// Math the values to return seconds
+		return (hours * 60 * 60) + (minutes * 60) + seconds;
+	}
+
+	function getVideoDetails(tr)
+	{
+		var id = tr.attr('id');
+		
+		//api supports multiple video ids per request, but too bad
+		$.ajax("https://www.googleapis.com/youtube/v3/videos", {
+			dataType: 'json',
+			success: function(data) {
+				var stats = data.items[0].statistics;
+				var details = data.items[0].contentDetails;
+				tr.find('#length').text(parseTime(details.duration));
+				tr.find('#views').text(stats.viewCount);
+				tr.find('#comments').text(stats.commentCount);
+				tr.find('#likes').text(stats.likeCount);
+				tr.find('#dislikes').text(stats.dislikeCount);
+				tr.find('button#get').prop('disabled', true);
+				//console.log("Got: " + videoDetailCount++ + " details");
+			},
+			data: {
+				part: 'contentDetails,statistics',
+				id: id,
+				key: apikey
+			}
+		});
+	}
+
+	function parseData(data)
+	{
+		for (let i of data.items) {
+			let id = i.snippet.resourceId.videoId;
+			$table.append('<tr id="' + id + '"><td id="date">' + i.snippet.publishedAt +
+			'</td><td id="videoId"><a href="https://www.youtube.com/watch?v=' +
+			id + '">' + id + '</a></td><td id="title">' + i.snippet.title + 
+			'</td><td id="desc">' + i.snippet.description + '</td><td id="length"></td>' + 
+			'<td id="views"></td><td id="comments"><td id="likes"></td><td id="dislikes"></td>' + 
+			'<td><button id="get">Get</button></td></tr>');
+		}
+
+		videoCount += data.items.length;
+		console.log("Videos retrieved so far: " + videoCount + ", totalResults: " +
+			data.pageInfo.totalResults);
+
+		getMoreVideos(data.nextPageToken);
+	}
+
+	function getMoreVideos(nextPageToken, firstTime)
+	{
+		if (firstTime || nextPageToken) {
+			$.ajax("https://www.googleapis.com/youtube/v3/playlistItems", {
+            	dataType: 'json',
+    	        success: parseData,
+	            data: {
+                	part: 'snippet',
+            	    maxResults: 50,
+        	        type: 'video',
+					pageToken: nextPageToken ? nextPageToken : "",
+	                playlistId: playlistId,
+                	key: apikey
+            	}
+        	});
+		}
+	}
+})
+</script>
+</head>
+<body>
+<div id="controls">
+<div>
+<label>API Key: <input type="text" id="apikey" placeholder="YouTube API Key"/></label>
+</div>
+<div>
+<label>User: <input type="text" id="user" autocomplete="username" placeholder="username" /></label>
+<button id="getUser">Get User Details</button>
+</div>
+<div>
+<label>Channel: <input type="text" id="channel" placeholder="channel ID" /></label>
+<button id="getPlaylists">Get Playlists</button>
+</div>
+<div>
+<label>Upload Playlist: <input type="text" id="playlist" placeholder="uploads playlist ID" /></label>
+<button id="getVideos">Get All Videos</button>
+</div>
+<div id="userDetails">
+</div>
+<div id="playlistDetails">
+</div>
+<div>
+<table>
+<thead>
+<tr><th>date</th><th>videoId</th><th>title</th><th>description</th>
+<th>length</th><th>views</th><th>comments</th><th>likes</th><th>dislikes</th>
+<th><button id="getAllVideoDetails">Get All</button></th></tr>
+</thead>
+<tbody id="results">
+</tbody>
+</table>
+</ul>
+</div>
+</body>
+</html>
