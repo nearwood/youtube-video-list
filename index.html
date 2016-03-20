@@ -1,5 +1,7 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
+<meta charset="UTF-8">
 <title>Video List</title>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
 <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/themes/smoothness/jquery-ui.css">
@@ -222,19 +224,20 @@ $(function() {
 <body>
 <div id="controls">
 <div>
-<label>API Key: <input type="text" id="apikey" placeholder="YouTube API Key"/></label>
+<label>API Key: <input type="text" id="apikey" autocomplete="on" placeholder="YouTube API Key"/></label>
 </div>
 <div>
-<label>User: <input type="text" id="user" autocomplete="username" placeholder="username" /></label>
+<label>User: <input type="text" id="user" autocomplete="on" placeholder="username" /></label>
 <button id="getUser">Get User Details</button>
 </div>
 <div>
-<label>Channel: <input type="text" id="channel" placeholder="channel ID" /></label>
+<label>Channel: <input type="text" id="channel" autocomplete="on" placeholder="channel ID" /></label>
 <button id="getPlaylists">Get Playlists</button>
 </div>
 <div>
-<label>Upload Playlist: <input type="text" id="playlist" placeholder="uploads playlist ID" /></label>
+<label>Upload Playlist: <input type="text" id="playlist" autocomplete="on" placeholder="uploads playlist ID" /></label>
 <button id="getVideos">Get All Videos</button>
+</div>
 </div>
 <div id="userDetails">
 </div>
@@ -250,7 +253,6 @@ $(function() {
 <tbody id="results">
 </tbody>
 </table>
-</ul>
 </div>
 </body>
 </html>
